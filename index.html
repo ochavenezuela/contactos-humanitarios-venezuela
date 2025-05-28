@@ -1033,34 +1033,37 @@
         
         // ---- AUTH FUNCTIONS & EVENT LISTENERS ----
         supabase.auth.onAuthStateChange(async (event, session) => {  
-            console.log('Auth event:', event, session);
-            const previousUser = currentUser;
-            if (event === "PASSWORD_RECOVERY") { 
-                showAuthForm('newPassword'); 
-                showSuccess('newPasswordSuccess', 'Ingrese su nueva contraseña.'); 
+    console.log('Auth event:', event, session);
+    const previousUser = currentUser;
+    
+    if (event === "PASSWORD_RECOVERY") { 
+        showAuthForm('newPassword'); 
+        showSuccess('newPasswordSuccess', 'Ingrese su nueva contraseña.'); 
+        return; // ⭐ ESTO ES LA CLAVE - detener aquí y no procesar la sesión
+    }
+    
+    if (session && session.user) {
+        currentUser = session.user;
+        if (document.getElementById('mainApp').style.display === 'none' || (previousUser && previousUser.id !== currentUser.id) ) {
+            appInitialized = false; 
+            showMainApp(); 
+        } else if (document.getElementById('mainApp').style.display === 'block' && !appInitialized) {
+            await initializeApp();
+        }
+        document.getElementById('userEmail').textContent = currentUser.email;
+    } else { 
+        currentUser = null;
+        if (appInitialized) { 
+            if (contactChangesChannel) {
+                try { await supabase.removeChannel(contactChangesChannel); console.log("Removed realtime channel."); } 
+                catch(e) { console.warn("Error removing old channel:", e); }
+                contactChangesChannel = null; 
             }
-            if (session && session.user) {
-                currentUser = session.user;
-                if (document.getElementById('mainApp').style.display === 'none' || (previousUser && previousUser.id !== currentUser.id) ) {
-                    appInitialized = false; 
-                    showMainApp(); 
-                } else if (document.getElementById('mainApp').style.display === 'block' && !appInitialized) {
-                    await initializeApp();
-                }
-                document.getElementById('userEmail').textContent = currentUser.email;
-            } else { 
-                currentUser = null;
-                if (appInitialized) { 
-                    if (contactChangesChannel) {
-                        try { await supabase.removeChannel(contactChangesChannel); console.log("Removed realtime channel."); } 
-                        catch(e) { console.warn("Error removing old channel:", e); }
-                        contactChangesChannel = null; 
-                    }
-                }
-                appInitialized = false; 
-                showLoginPage();
-            }
-        });
+        }
+        appInitialized = false; 
+        showLoginPage();
+    }
+});
         function showAuthForm(formToShow) { 
             hideAuthMessages(); 
             ['loginForm', 'registerForm', 'passwordResetForm', 'newPasswordForm'].forEach(fId => 
