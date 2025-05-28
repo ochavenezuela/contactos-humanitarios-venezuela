@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Contactos Humanitarios - OCHA Venezuela</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --ocha-blue: #007DBC; --ocha-dark-blue: #005A8A; --ocha-light-blue: #E8F4F8;
+            --ocha-orange: #ECA154; --ocha-dark-orange: #D2691E; --ocha-gray: #5A5A5A;
+            --ocha-light-gray: #F5F5F5; --ocha-dark-gray: #3A3A3A; --ocha-white: #FFFFFF;
+            --ocha-black: #000000; --ocha-red: #CD3A1F; --ocha-green: #7DBA00;
+            --ocha-purple: #5B92E5; --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.1); --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            background-color: var(--ocha-light-gray); 
+            color: var(--ocha-dark-gray); 
+            line-height: 1.6; 
+            overflow-x: hidden; 
+        }
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--ocha-blue) 0%, var(--ocha-dark-blue) 100%); padding: 1rem; }
+        .login-box { background: white; padding: 2.5rem; border-radius: 12px; box-shadow: var(--shadow-lg); width: 100%; max-width: 420px; }
+        .login-logo { text-align: center; margin-bottom: 1.5rem; }
+        .login-logo img { height: 60px; }
+        .login-main-title { color: var(--ocha-blue); text-align: center; margin-bottom: 0.5rem; font-size: 1.8rem; }
+        .login-form-title { color: var(--ocha-dark-gray); text-align: center; margin-bottom: 1.5rem; font-size: 1.3rem; font-weight: 500; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; margin-bottom: 0.5rem; color: var(--ocha-gray); font-weight: 500; }
+        .form-control { width: 100%; padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; transition: all 0.3s; }
+        .form-control:focus { outline: none; border-color: var(--ocha-blue); box-shadow: 0 0 0 3px rgba(0, 125, 188, 0.1); }
+        .form-control-sm { padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn-primary { background-color: var(--ocha-blue); color: white; }
+        .btn-primary:hover { background-color: var(--ocha-dark-blue); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        .btn-secondary { background-color: var(--ocha-gray); color: white; }
+        .btn-secondary:hover { background-color: var(--ocha-dark-gray); }
+        .btn-danger { background-color: var(--ocha-red); color: white; }
+        .btn-danger:hover { background-color: #a02d17; }
+        .btn-success { background-color: var(--ocha-green); color: white; }
+        .btn-success:hover { background-color: #649600; }
+        .btn-info { background-color: var(--ocha-purple); color: white; }
+        .btn-info:hover { background-color: #4a7bc7; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+        .login-links { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; }
+        .login-links p { margin-bottom: 0.5rem; }
+        .login-links a { color: var(--ocha-blue); text-decoration: none; }
+        .login-links a:hover { text-decoration: underline; }
+        .btn-block { width: 100%; justify-content: center; }
+        .header { 
+            background-color: white; 
+            box-shadow: var(--shadow-sm); 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+        }
+        .header-content { max-width: 1400px; margin: 0 auto; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+        .header-brand { display: flex; align-items: center; gap: 1rem; }
+        .header-logo { height: 50px; }
+        .header-title h1 { font-size: 1.5rem; color: var(--ocha-blue); font-weight: 600; }
+        .header-subtitle { font-size: 0.875rem; color: var(--ocha-gray); }
+        .header-actions { display: flex; gap: 1rem; align-items: center; }
+        .user-info { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background-color: var(--ocha-light-gray); border-radius: 6px; }
+        .config-button { background: none; border: none; font-size: 1.2rem; color: var(--ocha-gray); cursor: pointer; padding: 0.5rem; }
+        .config-button:hover { color: var(--ocha-blue); }
+        .main-container { max-width: 1400px; margin: 0 auto; padding: 2rem; display: grid; grid-template-columns: 300px 1fr; gap: 2rem; min-height: calc(100vh - 200px); } 
+        .sidebar { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); height: fit-content; position: sticky; top: 120px; overflow-y: auto; max-height: calc(100vh - 140px); z-index: 50; }
+        .kpi-section { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .kpi-card { background: var(--ocha-light-blue); border-radius: 8px; padding: 1.5rem; text-align: center; transition: all 0.3s; cursor: pointer; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .kpi-icon { font-size: 2.5rem; color: var(--ocha-blue); margin-bottom: 0.5rem; }
+        .kpi-value { font-size: 2rem; font-weight: 700; color: var(--ocha-dark-gray); }
+        .kpi-label { font-size: 0.875rem; color: var(--ocha-gray); text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-section { margin-bottom: 1.5rem; }
+        .filter-title { font-size: 1rem; color: var(--ocha-dark-gray); margin-bottom: 0.75rem; font-weight: 600; border-bottom: 2px solid var(--ocha-light-blue); padding-bottom: 0.5rem; }
+        .filter-select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.8rem; background: white; cursor: pointer; }
+        
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(75px, 1fr)); 
+            gap: 0.5rem; 
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0.25rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .checkbox-filter-grid { 
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 0.5rem; 
+            max-height: 150px; 
+            overflow-y: auto;
+            padding: 0.25rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .checkbox-filter-grid .checkbox-item { padding: 0.3rem 0.5rem; font-size: 0.75rem; display: flex; align-items: center;}
+        .checkbox-filter-grid .checkbox-item input { margin-right: 0.5rem; }
+        .checkbox-filter-grid label { word-break: break-word; }
+
+        .icon-item { background: var(--ocha-light-gray); border: 2px solid transparent; border-radius: 6px; padding: 0.5rem; text-align: center; cursor: pointer; transition: all 0.3s; min-height: 60px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .icon-item:hover { background: var(--ocha-light-blue); border-color: var(--ocha-blue); transform: scale(1.05); }
+        .icon-item.active { background: var(--ocha-blue); color: white; border-color: var(--ocha-dark-blue); }
+        .icon-item.active .cluster-icon { color: white; }
+        .cluster-icon { font-size: 1.1rem; color: var(--ocha-blue); margin-bottom: 0.2rem; display: block; }
+        .cluster-name { font-size: 0.65rem; font-weight: 500; word-break: break-word; line-height: 1.2; text-align: center; }
+        .table-container { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow-sm); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        .search-box { position: relative; flex-grow: 1; min-width: 250px; }
+        .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 3rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.875rem; }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--ocha-gray); }
+        .table-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        
+        .table-wrapper { 
+            overflow-x: auto; 
+            overflow-y: auto; 
+            max-height: calc(100vh - 370px); /* Adjusted from 380px */
+        }
+        .contacts-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 920px; /* Adjusted from 1040px */
+        }
+        .contacts-table th, .contacts-table td { 
+            padding: 0.7rem 0.6rem; /* Adjusted from 1rem */
+            border-bottom: 1px solid #eee; 
+            text-align: left; 
+            white-space: nowrap; 
+        }
+        .contacts-table th { 
+            background: var(--ocha-light-blue); 
+            font-weight: 600; 
+            color: var(--ocha-dark-gray); 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+        }
+        .contacts-table td a { color: var(--ocha-blue); text-decoration: none; }
+        .contacts-table td a:hover { text-decoration: underline; }
+        .contacts-table tr:hover { background: var(--ocha-light-blue); }
+        
+        .contacts-table th:first-child, 
+        .contacts-table td:first-child { 
+            width: 25px; min-width: 25px; max-width: 25px; /* Adjusted */
+            text-align: center; white-space: normal; 
+            padding-left: 0.4rem; padding-right: 0.4rem; /* Adjusted */
+        }
+        .contacts-table th:nth-child(2), .contacts-table td:nth-child(2) { /* Nombre Completo */
+            min-width: 120px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; /* Adjusted */
+        }
+        .contacts-table th:nth-child(3), .contacts-table td:nth-child(3) { /* Correo */
+            min-width: 150px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; /* Adjusted */
+        }
+        .contacts-table td:nth-child(3) a { 
+            display: block; overflow: hidden; text-overflow: ellipsis;
+        }
+        .contacts-table th:nth-child(4), .contacts-table td:nth-child(4) { /* Organización */
+            min-width: 110px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; /* Adjusted */
+        }
+        .contacts-table th:nth-child(5), .contacts-table td:nth-child(5) { /* Cargo */
+            min-width: 100px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; /* Adjusted */
+        }
+        .contacts-table th:nth-child(6), .contacts-table td:nth-child(6) { /* Teléfono */
+            min-width: 85px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; /* Adjusted */
+        }
+        .contacts-table th:nth-child(7), .contacts-table td:nth-child(7) { /* Acciones */
+            min-width: 75px; /* Adjusted */
+        }
+        .contacts-table .actions-cell { white-space: nowrap; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 1.5rem; color: var(--ocha-dark-gray); }
+        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--ocha-gray); }
+        .modal-body { padding: 1.5rem; }
+        .modal-footer { padding: 1.5rem; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 1rem; }
+        #configModal .modal-content { max-width: 500px; } 
+        #configContent { margin-top: 1rem; display: flex; flex-direction: column; gap: 1.5rem;  }
+
+        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+        .checkbox-item { display: flex; align-items: center; gap: 0.5rem; }
+        .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .checkbox-item label { cursor: pointer; font-size: 0.875rem; }
+        .checkbox-item-boolean { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background-color: #f9f9f9; border-radius: 4px;}
+        .status-message { padding: 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; display: none; }
+        .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-info { background: #e2f3fe; color: #084298; border: 1px solid #b6d4fe; }
+        .spinner { border: 3px solid var(--ocha-light-gray); border-top: 3px solid var(--ocha-blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .site-footer {
+            background-color: var(--ocha-dark-gray);
+            color: var(--ocha-light-gray);
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.875rem;
+            margin-top: 2rem; 
+            position: sticky; 
+            bottom: 0;
+            z-index: 99; 
+        }
+        
+        @media (max-width: 1024px) { 
+            .main-container { grid-template-columns: 1fr; gap: 1rem; } 
+            .sidebar { position: relative; top: auto; max-height: none; } 
+        }
+        @media (max-width: 768px) { 
+            .header-content { flex-direction: column; gap: 1rem; } 
+            .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); } /* Adjusted */
+            .kpi-icon { font-size: 2.2rem; } 
+            .kpi-value { font-size: 1.8rem; } 
+            .kpi-label { font-size: 0.8rem; } 
+            .icon-grid { grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); } 
+            .table-header { flex-direction: column; align-items: stretch; } 
+            .search-box { max-width: none; } 
+            .modal-content { width: 95%; } 
+            .main-container { padding: 1rem; }
+            .contacts-table th {
+                font-size: 0.8rem; /* Adjusted */
+                padding: 0.6rem 0.4rem; /* Adjusted */
+            }
+            .contacts-table td {
+                font-size: 0.75rem; /* Adjusted */
+                padding: 0.6rem 0.4rem; /* Adjusted */
+            }
+        }
+        @media (max-width: 480px) { 
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); /* Adjusted */
+            }
+            .kpi-icon { font-size: 2rem; }
+            .kpi-value { font-size: 1.6rem; }
+            .kpi-label { font-size: 0.75rem; }
+
+            .contacts-table th {
+                font-size: 0.7rem; /* Adjusted */
+                padding: 0.5rem 0.3rem; /* Adjusted */
+            }
+            .contacts-table td {
+                font-size: 0.65rem; /* Adjusted */
+                padding: 0.5rem 0.3rem; /* Adjusted */
+            }
+            .btn-sm { 
+                padding: 0.3rem 0.6rem;
+                font-size: 0.7rem;
+            }
+            .btn-sm .fas { 
+                font-size: 0.8em; 
+                margin-right: 0.25rem; 
+            }
+             .btn { 
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+            .form-control { 
+                padding: 0.6rem 0.8rem;
+                font-size: 0.9rem;
+            }
+            .header-title h1 { font-size: 1.3rem; }
+            .header-subtitle { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <div class="login-logo"><img src="https://images4.imagebam.com/f2/74/67/MEZQJH3_o.PNG" alt="OCHA Logo"></div>
+            <h2 class="login-main-title">Sistema de Contactos Humanitarios</h2>
+            <form id="loginForm">
+                <h3 class="login-form-title">Ingresar</h3>
+                <div class="form-group"><label class="form-label" for="loginEmail">Correo Electrónico</label><input type="email" id="loginEmail" class="form-control" required></div>
+                <div class="form-group"><label class="form-label" for="loginPassword">Contraseña</label><input type="password" id="loginPassword" class="form-control" required></div>
+                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-sign-in-alt"></i> Ingresar</button>
+            </form>
+            <div id="loginError" class="status-message status-error" style="margin-top: 1rem;"></div>
+            <div id="loginSuccess" class="status-message status-success" style="margin-top: 1rem;"></div>
+            <form id="registerForm" style="display:none;">
+                <h3 class="login-form-title">Crear Cuenta</h3>
+                <div class="form-group"><label class="form-label" for="registerEmail">Correo Electrónico</label><input type="email" id="registerEmail" class="form-control" required></div>
+                <div class="form-group"><label class="form-label" for="registerPassword">Contraseña</label><input type="password" id="registerPassword" class="form-control" required></div>
+                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-user-plus"></i> Registrarse</button>
+            </form>
+            <div id="registerError" class="status-message status-error" style="margin-top: 1rem;"></div>
+            <div id="registerSuccess" class="status-message status-success" style="margin-top: 1rem;"></div>
+            <form id="passwordResetForm" style="display:none;">
+                <h3 class="login-form-title">Recuperar Contraseña</h3>
+                <div class="form-group"><label class="form-label" for="resetEmail">Correo Electrónico</label><input type="email" id="resetEmail" class="form-control" required></div>
+                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-key"></i> Enviar enlace</button>
+            </form>
+            <div id="resetError" class="status-message status-error" style="margin-top: 1rem;"></div>
+            <div id="resetSuccess" class="status-message status-success" style="margin-top: 1rem;"></div>
+            <div class="login-links">
+                <p id="linkToRegister">¿No tienes cuenta? <a href="#" id="showRegisterLink">Regístrate</a></p>
+                <p id="linkToLoginFromRegister" style="display:none;">¿Ya tienes cuenta? <a href="#" id="showLoginFromRegisterLink">Ingresa</a></p>
+                <p id="linkToPasswordReset">¿Olvidaste tu contraseña? <a href="#" id="showPasswordResetLink">Recupérala</a></p>
+                <p id="linkToLoginFromReset" style="display:none;">¿Recordaste? <a href="#" id="showLoginFromResetLink">Ingresa</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" style="display: none;">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <img src="https://images4.imagebam.com/f2/74/67/MEZQJH3_o.PNG" alt="OCHA Logo" class="header-logo">
+                    <div class="header-title"><h1>VENEZUELA</h1><div class="header-subtitle">Sistema de Contactos Humanitarios</div></div>
+                </div>
+                <div class="header-actions">
+                    <div class="user-info"><i class="fas fa-user-circle"></i><span id="userEmail"></span></div>
+                    <button class="config-button" onclick="showConfigModal()" title="Configuración de Importación"><i class="fas fa-cog"></i></button>
+                    <button class="btn btn-secondary" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Salir</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <aside class="sidebar" id="sidebar">
+                <div class="filter-section">
+                    <h3 class="filter-title">Filtros</h3>
+                    <div class="form-group"><label class="form-label">Estado</label><select id="stateFilter" class="filter-select"><option value="">Todos los estados</option></select></div>
+                    <div class="form-group"><label class="form-label">Tipo de Organización</label><select id="orgTypeFilter" class="filter-select"><option value="">Todos los tipos</option></select></div>
+                  
+                    <div class="filter-section">
+                        <h4 class="filter-title">Organización (Acrónimo)</h4>
+                        <input type="text" id="searchAcronymFilter" placeholder="Buscar acrónimo..." class="form-control form-control-sm" style="margin-bottom: 0.5rem; font-size: 0.8rem;">
+                        <div class="checkbox-filter-grid" id="acronymFilterCheckboxes">
+                            <!-- Acronym checkboxes will be populated here -->
+                        </div>
+                    </div>
+                    <div class="filter-section"><h4 class="filter-title">Sectores</h4><div class="icon-grid" id="clusterGrid"></div></div>
+                    <div class="filter-section"><h4 class="filter-title">Grupos de Trabajo</h4><div class="icon-grid" id="groupGrid"></div></div>
+					<div class="form-group"><label class="form-label">Lista OCHA</label><select id="ochaListFilter" class="filter-select"><option value="">Todas las listas</option></select></div>
+                    <button class="btn btn-secondary btn-block" onclick="resetFilters()"><i class="fas fa-redo"></i> Limpiar Filtros</button>
+                </div>
+            </aside>
+
+            <main>
+                <section class="kpi-section">
+                    <h2 style="color: var(--ocha-dark-gray); margin-bottom: 1rem;">Cifras Clave</h2>
+                    <div class="kpi-grid" id="kpiGrid"></div>
+                </section>
+
+                <section class="table-container">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nombre, organización, correo...">
+                        </div>
+                        <div class="table-actions"> 
+                            <button class="btn btn-primary" onclick="showAddContactModal()"><i class="fas fa-user-plus"></i> Nuevo Contacto</button>
+                            <button class="btn btn-success" onclick="exportContacts()"><i class="fas fa-download"></i> Exportar Seleccionados</button>
+                            <button class="btn btn-info" id="sendEmailButton"><i class="fas fa-paper-plane"></i> Enviar Correo</button>
+                        </div>
+                    </div>
+                    
+                    <div id="appStatusMessage" class="status-message"></div>
+                    
+                    <div class="table-wrapper">
+                        <table class="contacts-table">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="selectAllCheckbox" title="Seleccionar Todos"></th>
+                                    <th>Nombre Completo</th>
+                                    <th>Correo Electrónico</th>
+                                    <th>Organización</th>
+                                    <th>Cargo</th>
+                                    <th>Teléfono</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contactsTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Contact Modal -->
+    <div id="contactModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title" id="modalTitle">Nuevo Contacto</h3><button class="modal-close" onclick="closeContactModal()">×</button></div>
+            <form id="contactForm">
+                <div class="modal-body">
+                    <input type="hidden" id="contactId">
+                    <h4 style="color: var(--ocha-blue); margin-bottom: 1rem;">Información Personal y de Contacto</h4>
+					<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <div class="form-group"><label class="form-label">Título</label><input type="text" id="titulo" class="form-control"></div>
+                        <div class="form-group"><label class="form-label">Género</label><select id="genero" class="form-control"><option value="">Seleccionar</option><option value="Masculino">Masculino</option><option value="Femenino">Femenino</option><option value="Otro">Otro</option></select></div>
+                        <div class="form-group"><label class="form-label">Nombre *</label><input type="text" id="nombre" class="form-control" required></div>
+                        <div class="form-group"><label class="form-label">Apellido *</label><input type="text" id="apellido" class="form-control" required></div>
+                        <div class="form-group"><label class="form-label">Correo Electrónico *</label><input type="email" id="email_address" class="form-control" required></div>
+                        <div class="form-group"><label class="form-label">Teléfono</label><input type="text" id="telefono" class="form-control"></div>
+                    </div>
+
+                    <h4 style="color: var(--ocha-blue); margin: 1.5rem 0 1rem;">Información Organizacional</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group"><label class="form-label">Cargo</label><input type="text" id="cargo" class="form-control"></div>
+                        <div class="form-group"><label class="form-label">Organización</label><input type="text" id="organizacion" class="form-control"></div>
+                        <div class="form-group"><label class="form-label">Acrónimo</label><input type="text" id="acronimo" class="form-control"></div>
+                    </div>
+                    
+                    <h4 style="color: var(--ocha-blue); margin: 1.5rem 0 1rem;">Tipo de Organización</h4><div class="checkbox-grid" id="orgTypeCheckboxes"></div>
+                    <h4 style="color: var(--ocha-blue); margin: 1.5rem 0 1rem;">Sectores</h4><div class="checkbox-grid" id="clusterCheckboxes"></div>
+                    <h4 style="color: var(--ocha-blue); margin: 1.5rem 0 1rem;">Estados</h4><div class="checkbox-grid" id="stateCheckboxes"></div>
+                    <h4 style="color: var(--ocha-blue); margin: 1.5rem 0 1rem;">Grupos de Trabajo</h4><div class="checkbox-grid" id="groupCheckboxes"></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeContactModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Configuration Modal -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Configuración de Importación</h3>
+                <button class="modal-close" onclick="closeConfigModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="configPasswordSection">
+                    <p>Ingrese la contraseña para acceder a las opciones de importación:</p>
+                    <div class="form-group" style="margin-top: 1rem; position: relative;">
+                        <label class="form-label" for="configPassword">Contraseña</label>
+                        <input type="password" id="configPassword" class="form-control" style="padding-right: 40px;">
+                        <span id="toggleConfigPassword" style="position: absolute; right: 12px; top: calc(50% + 6px); transform: translateY(-50%); cursor: pointer; color: var(--ocha-gray);" title="Mostrar/Ocultar contraseña">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-block" onclick="checkConfigPassword()">Acceder</button>
+                    <div id="configPasswordError" class="status-message status-error" style="margin-top: 1rem;"></div>
+                </div>
+                <div id="configContent" style="display: none;">
+                    <h4>Opciones de Importación</h4>
+                    <input type="file" id="importFile" accept=".xlsx,.csv,.txt" style="display: none;" onchange="importContactsFromFile(event)">
+                    <button class="btn btn-primary btn-block" onclick="document.getElementById('importFile').click()"><i class="fas fa-upload"></i> Importar Archivo</button>
+                    <button class="btn btn-info btn-block" onclick="importContactsFromURL()"><i class="fas fa-link"></i> Importar desde URL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer" id="siteFooter" style="display: none;">
+        <p>Producto realizado por OCHA Venezuela - Mayo 2025</p>
+    </footer>
+
+
+    <script>
+        const SUPABASE_URL = 'https://moznwslafixhunnucetc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vem53c2xhZml4aHVubnVjZXRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzOTUxMjAsImV4cCI6MjA2Mzk3MTEyMH0.u9BBDbeQTiiZg2yabc0SIUrCYQuRUtYouS-J27Q2vkg';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const states = ['nacional', 'amazonas', 'anzoategui', 'apure', 'aragua', 'barinas', 'bolivar', 'carabobo', 'cojedes', 'delta_amacuro', 'distrito_capital', 'falcon', 'guarico', 'lara', 'merida', 'miranda', 'monagas', 'nueva_esparta', 'portuguesa', 'sucre', 'tachira', 'trujillo', 'vargas', 'yaracuy', 'zulia'];
+        const orgTypes = ['academia', 'donantes', 'embajadas', 'fuerzas_armadas', 'gobierno', 'iglesia_grupo_religioso', 'institucion_publica', 'movimiento_cruz_roja', 'naciones_unidas', 'ong_internacional', 'ong_local', 'ong_nacional', 'organismo_internacional', 'otro', 'prensa_medios', 'proteccion_civil', 'regional', 'sector_privado', 'sociedad_civil'];
+        const clusters = [ { id: 'agua_saneamiento', name: 'Agua/Saneamiento', icon: 'fa-tint' }, { id: 'alojamiento_energia', name: 'Alojamiento', icon: 'fa-home' }, { id: 'coordinacion', name: 'Coordinación', icon: 'fa-users' }, { id: 'educacion', name: 'Educación', icon: 'fa-graduation-cap' }, { id: 'logistica', name: 'Logística', icon: 'fa-truck' }, { id: 'nutricion', name: 'Nutrición', icon: 'fa-utensils' }, { id: 'proteccion_general', name: 'Protección', icon: 'fa-shield-alt' }, { id: 'proteccion_nna', name: 'Protección NNA', icon: 'fa-child' }, { id: 'proteccion_violencia_genero', name: 'Protección VBG', icon: 'fa-user-shield' }, { id: 'salud', name: 'Salud', icon: 'fa-heart-pulse' }, { id: 'seguridad_alimentaria', name: 'Seg. Alimentaria', icon: 'fa-bread-slice' }];
+        const workingGroups = [ { id: 'donors', name: 'Donantes', icon: 'fa-hand-holding-dollar' }, { id: 'ehp', name: 'EHP', icon: 'fa-people-carry' }, { id: 'gic', name: 'GIC', icon: 'fa-network-wired' }, { id: 'gtmi', name: 'GTMI', icon: 'fa-chart-line' }, { id: 'gtpre', name: 'GTPRE', icon: 'fa-shield-virus' }, { id: 'tah', name: 'TAH', icon: 'fa-handshake' }, { id: 'hrp', name: 'HRP', icon: 'fa-file-contract' }, { id: 'rig', name: 'RIG', icon: 'fa-door-open' }];
+        const ochaListsConfig = [ { id_in_csv_config: 'OCHA-VEN-GTAH', name_for_filter: 'OCHA-VEN-GTAH' }, { id_in_csv_config: 'ocha-ven-cct-san_cristobal', name_for_filter: 'ocha-ven-cct-san_cristobal' }, { id_in_csv_config: 'ocha-ven-donantes', name_for_filter: 'ocha-ven-donantes' }, { id_in_csv_config: 'ocha-ven-fccs', name_for_filter: 'ocha-ven-fccs' }, { id_in_csv_config: 'ocha-ven-fhv-JuntaAsesora', name_for_filter: 'ocha-ven-fhv-JuntaAsesora' }, { id_in_csv_config: 'ocha-ven-fhv-socios', name_for_filter: 'ocha-ven-fhv-socios' }, { id_in_csv_config: 'ocha-ven-gch', name_for_filter: 'ocha-ven-gch' }, { id_in_csv_config: 'ocha-ven-gtmi', name_for_filter: 'ocha-ven-gtmi' }, { id_in_csv_config: 'ocha-ven-gtpre', name_for_filter: 'ocha-ven-gtpre' }, { id_in_csv_config: 'ocha-ven-hct', name_for_filter: 'ocha-ven-hct' }, { id_in_csv_config: 'ocha-ven-headsoffice', name_for_filter: 'ocha-ven-headsoffice' }, { id_in_csv_config: 'ocha-ven-intersectorial', name_for_filter: 'ocha-ven-intersectorial' }];
+        const allOchaListKeysAndNames = ochaListsConfig.map(lc => ({ 
+            value: `list_${lc.id_in_csv_config.toLowerCase().replace(/-/g,'_')}`, 
+            name: lc.name_for_filter 
+        }));
+
+
+        let currentUser = null; 
+        let contacts = []; 
+        let filteredContacts = [];
+        let activeFilters = { search: '', state: '', orgType: '', ochaList: '', acronyms: [], clusters: [], groups: [] };
+        let appInitialized = false;
+        let contactChangesChannel = null;
+        let selectedContactIds = new Set();
+        const CONFIG_PASSWORD = "OCHAadmin2025";
+
+        async function initializeApp() {
+            if (appInitialized && currentUser) return; 
+            if (!currentUser) return; 
+            console.log("Initializing app data...");
+            setupFiltersUI(); 
+            setupEventListenersApp(); 
+            await loadContacts(); 
+            
+            if (contactChangesChannel) {
+                try { await supabase.removeChannel(contactChangesChannel); } catch(e) { console.warn("Error removing old channel:", e); }
+            }
+            contactChangesChannel = supabase.channel('contacts-changes');
+            contactChangesChannel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, handleRealtimeUpdate)
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') console.log('Subscribed to contacts-changes channel!');
+                    else if (status === 'CHANNEL_ERROR') console.error('Subscription error on contacts-changes channel');
+                    else if (status === 'TIMED_OUT') console.warn('Subscription timeout on contacts-changes channel');
+                });
+            appInitialized = true;
+        }
+
+        function setupFiltersUI() { 
+            const stateSelect = document.getElementById('stateFilter');
+            stateSelect.innerHTML = '<option value="">Todos los estados</option>'; 
+            states.forEach(state => { const option = document.createElement('option'); option.value = state; option.textContent = formatStateName(state); stateSelect.appendChild(option); });
+
+            const orgTypeSelect = document.getElementById('orgTypeFilter');
+            orgTypeSelect.innerHTML = '<option value="">Todos los tipos</option>';
+            orgTypes.forEach(type => { const option = document.createElement('option'); option.value = type; option.textContent = formatOrgType(type); orgTypeSelect.appendChild(option); });
+
+            const ochaListSelect = document.getElementById('ochaListFilter');
+            ochaListSelect.innerHTML = '<option value="">Todas las listas</option>';
+            allOchaListKeysAndNames.forEach(listConf => { const option = document.createElement('option'); option.value = listConf.value; option.textContent = formatListName(listConf.name); ochaListSelect.appendChild(option); });
+
+            const clusterGrid = document.getElementById('clusterGrid');
+            clusterGrid.innerHTML = ''; 
+            clusters.forEach(cluster => clusterGrid.appendChild(createIconItem(cluster, 'cluster')));
+
+            const groupGrid = document.getElementById('groupGrid');
+            groupGrid.innerHTML = ''; 
+            workingGroups.forEach(group => groupGrid.appendChild(createIconItem(group, 'group')));
+            
+            updateAcronymFilterCheckboxesUI([], []); 
+            setupModalCheckboxes();
+        }
+        
+        function updateAcronymFilterCheckboxesUI(sourceContacts, previouslySelectedAcronyms) {
+            const acronymContainer = document.getElementById('acronymFilterCheckboxes');
+            acronymContainer.innerHTML = ''; 
+            
+            const uniqueAcronymsWithCounts = new Map();
+            sourceContacts.forEach(contact => {
+                const acronym = (contact.acronimo && contact.acronimo.trim() !== '') ? contact.acronimo.trim() : "SIN_ACRONIMO";
+                uniqueAcronymsWithCounts.set(acronym, (uniqueAcronymsWithCounts.get(acronym) || 0) + 1);
+            });
+
+            if (previouslySelectedAcronyms.includes("SIN_ACRONIMO") && 
+                !uniqueAcronymsWithCounts.has("SIN_ACRONIMO") && 
+                sourceContacts.some(c => !c.acronimo || c.acronimo.trim() === '')) {
+                uniqueAcronymsWithCounts.set("SIN_ACRONIMO", 0); // Will be recalculated if there are actual contacts
+                let countSinAcronimo = 0;
+                sourceContacts.forEach(c => { if(!c.acronimo || c.acronimo.trim() === '') countSinAcronimo++; });
+                if(countSinAcronimo > 0) uniqueAcronymsWithCounts.set("SIN_ACRONIMO", countSinAcronimo);
+                else uniqueAcronymsWithCounts.delete("SIN_ACRONIMO"); // Remove if no actual contacts end up being without acronym
+            }
+
+            const sortedAcronyms = Array.from(uniqueAcronymsWithCounts.keys()).sort((a, b) => {
+                if (a === "SIN_ACRONIMO") return 1; 
+                if (b === "SIN_ACRONIMO") return -1;
+                return a.localeCompare(b);
+            });
+            
+            const currentValidSelectedAcronyms = [];
+
+            if (sortedAcronyms.length === 0 && sourceContacts.length > 0) {
+                 acronymContainer.innerHTML = '<p style="font-size: 0.75rem; color: var(--ocha-gray); text-align: center;">No hay acrónimos para la selección actual.</p>';
+            } else if (sortedAcronyms.length === 0 && sourceContacts.length === 0 && contacts.length > 0 && isAnyFilterActiveButAcronyms()) {
+                 acronymContainer.innerHTML = '<p style="font-size: 0.75rem; color: var(--ocha-gray); text-align: center;">No hay acrónimos para la selección actual.</p>';
+            }
+
+            sortedAcronyms.forEach(acronym => {
+                const count = uniqueAcronymsWithCounts.get(acronym);
+                const checkboxId = `acro_dyn_${acronym.replace(/\s+/g, '_').replace(/\W/g, '')}`; 
+                const displayName = acronym === "SIN_ACRONIMO" ? `Sin Acrónimo (${count})` : `${acronym} (${count})`;
+                const div = createCheckbox(checkboxId, displayName, 'acronym-filter-checkbox', acronym);
+                const checkbox = div.querySelector('input');
+
+                if (previouslySelectedAcronyms.includes(acronym)) {
+                    checkbox.checked = true;
+                    currentValidSelectedAcronyms.push(acronym);
+                }
+                
+                checkbox.addEventListener('change', (event) => {
+                    const acronymValue = event.target.dataset.value;
+                    if (event.target.checked) {
+                        if (!activeFilters.acronyms.includes(acronymValue)) {
+                            activeFilters.acronyms.push(acronymValue);
+                        }
+                    } else {
+                        activeFilters.acronyms = activeFilters.acronyms.filter(a => a !== acronymValue);
+                    }
+                    applyFilters(); 
+                });
+                acronymContainer.appendChild(div);
+            });
+            
+            activeFilters.acronyms = currentValidSelectedAcronyms; 
+
+            const searchInput = document.getElementById('searchAcronymFilter');
+            if (searchInput && searchInput.value) {
+                handleAcronymSearch({target: {value: searchInput.value}});
+            }
+        }
+
+        function updateSelectWithOptions(selectElementId, availableOptionsMap, currentSelectedValue, allPossibleOptionsArray, valueAccessor, textAccessor, pluralNoun) {
+            const selectElement = document.getElementById(selectElementId);
+            let valueToTryRestore = currentSelectedValue;
+
+            selectElement.innerHTML = `<option value="">Todos los ${pluralNoun}</option>`;
+
+            allPossibleOptionsArray.forEach(optObjOrString => {
+                const value = valueAccessor(optObjOrString);
+                const text = textAccessor(optObjOrString);
+
+                if (availableOptionsMap.has(value)) {
+                    const count = availableOptionsMap.get(value);
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = `${text} (${count})`;
+                    selectElement.appendChild(option);
+                }
+            });
+            
+            if (availableOptionsMap.has(valueToTryRestore)) {
+                selectElement.value = valueToTryRestore;
+            } else {
+                selectElement.value = ""; 
+            }
+            
+            if (selectElementId === 'stateFilter') activeFilters.state = selectElement.value;
+            else if (selectElementId === 'orgTypeFilter') activeFilters.orgType = selectElement.value;
+            else if (selectElementId === 'ochaListFilter') activeFilters.ochaList = selectElement.value;
+        }
+
+
+        function isAnyFilterActiveButAcronyms() {
+            return activeFilters.search || activeFilters.state || activeFilters.orgType || activeFilters.ochaList || 
+                   activeFilters.clusters.length > 0 || activeFilters.groups.length > 0;
+        }
+
+
+        function createIconItem(item, type) {
+            const div = document.createElement('div');
+            div.className = 'icon-item';
+            div.dataset[type] = item.id;
+            div.innerHTML = `<i class="fas ${item.icon} cluster-icon"></i><div class="cluster-name">${item.name}</div>`;
+            div.onclick = () => toggleFilter(type, item.id);
+            return div;
+        }
+
+        function setupModalCheckboxes() { 
+            const orgTypeContainer = document.getElementById('orgTypeCheckboxes');
+            orgTypeContainer.innerHTML = '';
+            orgTypes.forEach(type => orgTypeContainer.appendChild(createCheckbox(`org_tipo_${type}`, formatOrgType(type))));
+
+            const clusterContainer = document.getElementById('clusterCheckboxes');
+            clusterContainer.innerHTML = '';
+            clusters.forEach(cluster => clusterContainer.appendChild(createCheckbox(`clust_${cluster.id}`, cluster.name)));
+            
+            const stateContainer = document.getElementById('stateCheckboxes');
+            stateContainer.innerHTML = '';
+            states.forEach(state => stateContainer.appendChild(createCheckbox(`est_${state}`, formatStateName(state))));
+
+            const groupContainer = document.getElementById('groupCheckboxes');
+            groupContainer.innerHTML = '';
+            workingGroups.forEach(group => groupContainer.appendChild(createCheckbox(`grp_${group.id}`, group.name)));
+        }
+
+        function createCheckbox(id, label, className = null, dataValue = null) {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = id;
+            input.name = id;
+            if (className) input.classList.add(className);
+            if (dataValue !== null) input.dataset.value = dataValue;
+
+            const labelEl = document.createElement('label');
+            labelEl.htmlFor = id;
+            labelEl.textContent = label;
+
+            div.appendChild(input);
+            div.appendChild(labelEl);
+            return div;
+        }
+
+        function setupAuthEventListeners() {
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('passwordResetForm').addEventListener('submit', handlePasswordResetRequest);
+            document.getElementById('showRegisterLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('register'); });
+            document.getElementById('showPasswordResetLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('reset'); });
+            document.getElementById('showLoginFromRegisterLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('login'); });
+            document.getElementById('showLoginFromResetLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('login'); });
+        }
+        
+        function setupEventListenersApp() { 
+            document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 300));
+            document.getElementById('stateFilter').addEventListener('change', applyFilters);
+            document.getElementById('orgTypeFilter').addEventListener('change', applyFilters);
+            document.getElementById('ochaListFilter').addEventListener('change', applyFilters);
+            document.getElementById('contactForm').addEventListener('submit', handleContactSubmit);
+            document.getElementById('selectAllCheckbox').addEventListener('change', handleSelectAllChange);
+            document.getElementById('sendEmailButton').addEventListener('click', handleSendEmail);
+            document.getElementById('searchAcronymFilter').addEventListener('input', handleAcronymSearch);
+        }
+
+        function handleAcronymSearch(event) {
+            const searchTerm = event.target.value.toLowerCase();
+            const acronymItems = document.querySelectorAll('#acronymFilterCheckboxes .checkbox-item');
+            acronymItems.forEach(item => {
+                const label = item.querySelector('label').textContent.toLowerCase();
+                if (label.includes(searchTerm)) {
+                    item.style.display = 'flex'; 
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function setupConfigPasswordToggle() {
+            const toggleButton = document.getElementById('toggleConfigPassword');
+            const passwordInput = document.getElementById('configPassword');
+            if (toggleButton && passwordInput) {
+                toggleButton.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-eye');
+                    icon.classList.toggle('fa-eye-slash');
+                });
+            }
+        }
+        window.addEventListener('DOMContentLoaded', () => { 
+            setupAuthEventListeners(); 
+            setupConfigPasswordToggle();
+        });
+
+
+        // ---- CONFIG MODAL FUNCTIONS ----
+        function showConfigModal() {
+            document.getElementById('configPasswordError').style.display = 'none';
+            document.getElementById('configPassword').value = '';
+            document.getElementById('configPassword').setAttribute('type', 'password'); 
+            const toggleIcon = document.getElementById('toggleConfigPassword').querySelector('i');
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+            document.getElementById('configPasswordSection').style.display = 'block';
+            document.getElementById('configContent').style.display = 'none';
+            document.getElementById('configModal').classList.add('active');
+        }
+        function closeConfigModal() {
+            document.getElementById('configModal').classList.remove('active');
+        }
+        function checkConfigPassword() {
+            const password = document.getElementById('configPassword').value;
+            if (password === CONFIG_PASSWORD) {
+                document.getElementById('configPasswordSection').style.display = 'none';
+                document.getElementById('configContent').style.display = 'block';
+                document.getElementById('configPasswordError').style.display = 'none';
+            } else {
+                const errorEl = document.getElementById('configPasswordError');
+                errorEl.textContent = 'Contraseña incorrecta.';
+                errorEl.style.display = 'block';
+            }
+        }
+
+
+        // ---- IMPORT/EXPORT FUNCTIONS ----
+        async function importContactsFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            showAppMessage(`Iniciando importación de ${file.name}...`, 'info', false);
+            try {
+                let jsonData;
+                if (file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
+                    jsonData = parseCsvText(await readFileAsText(file));
+                } else if (file.name.endsWith('.xlsx')) {
+                    jsonData = parseExcelFile(await readFileAsArrayBuffer(file));
+                } else { throw new Error("Formato de archivo no soportado."); }
+
+                if (!jsonData || jsonData.length === 0) { showAppMessage('Archivo vacío o no legible.', 'error'); return; }
+                console.log("Datos parseados (archivo, primeras 3):", jsonData.slice(0, 3));
+                await processAndUpsertContacts(jsonData, `archivo ${file.name}`);
+            } catch (error) {
+                console.error("Error importContactsFromFile:", error);
+                showAppMessage('Error importando: ' + error.message, 'error');
+            } finally { event.target.value = null; closeConfigModal(); }
+        }
+        async function importContactsFromURL() { 
+            const url = prompt("Pega el ENLACE DE DESCARGA DIRECTA del archivo (.xlsx, .csv, .txt):");
+            if (!url || url.trim() === "") { closeConfigModal(); return; }
+            showAppMessage('Descargando y procesando URL...', 'info', false);
+            try {
+                const response = await fetch(url); 
+                if (!response.ok) throw new Error(`Error descarga: ${response.status} ${response.statusText}`);
+                let jsonData;
+                const fileName = url.substring(url.lastIndexOf('/') + 1).toLowerCase();
+                if (fileName.includes('.txt') || fileName.includes('.csv')) {
+                    jsonData = parseCsvText(await response.text());
+                } else if (fileName.includes('.xlsx')) {
+                    jsonData = parseExcelFile(await response.arrayBuffer());
+                } else { throw new Error("Formato no soportado en URL."); }
+
+                if (!jsonData || jsonData.length === 0) { showAppMessage('Archivo URL vacío o no legible.', 'error'); return; }
+                console.log("Datos parseados (URL, primeras 3):", jsonData.slice(0, 3));
+                await processAndUpsertContacts(jsonData, 'URL');
+            } catch (error) {
+                console.error("Error importando desde URL:", error);
+                showAppMessage('Error importando desde URL: ' + error.message, 'error');
+            } finally { closeConfigModal(); }
+        }
+        function readFileAsText(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result); reader.onerror = reject; reader.readAsText(file, 'UTF-8'); }); }
+        function readFileAsArrayBuffer(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result); reader.onerror = reject; reader.readAsArrayBuffer(file); }); }
+        
+        function parseCsvText(csvText) {
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) { console.warn("CSV < 2 líneas."); return []; }
+            const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+            return lines.slice(1).map(line => {
+                const values = line.split(';'); const rowObject = {};
+                headers.forEach((header, index) => rowObject[header] = (values[index] || "").trim());
+                return rowObject;
+            });
+        }
+        function parseExcelFile(arrayBuffer) {
+            const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            if (!firstSheetName) throw new Error("Excel sin hojas.");
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "", rawValues: false, header: 1 });
+            if (jsonData.length < 2) { console.warn("Excel < 2 líneas."); return []; }
+            const headers = jsonData[0].map(h => String(h).trim().toLowerCase());
+            return jsonData.slice(1).map(rowArray => {
+                const rowObject = {};
+                headers.forEach((header, index) => rowObject[header] = (rowArray[index] !== undefined ? String(rowArray[index]) : "").trim());
+                return rowObject;
+            });
+        }
+
+        async function processAndUpsertContacts(jsonData, sourceType) {
+            let importedCount = 0, errorsCount = 0; const totalRows = jsonData.length;
+            const batchSize = 50; let batch = [];
+            console.log(`Procesando ${totalRows} filas desde ${sourceType}.`);
+
+            for (let i = 0; i < totalRows; i++) {
+                if ((i + 1) % 10 === 0 || (i + 1) === totalRows) showAppMessage(`Procesando ${sourceType}: ${i + 1}/${totalRows}...`, 'info', false);
+                const contactData = processImportRow(jsonData[i]);
+                if (i < 2) console.log(`Datos procesados para Supabase (fila original ${i+1}):`, JSON.parse(JSON.stringify(contactData)));
+                
+                if (!contactData.email_address || !contactData.email_address.includes('@')) {
+                    console.warn(`Fila ${i+1} saltada, email inválido: "${contactData.email_address}"`, jsonData[i]);
+                    errorsCount++; continue;
+                }
+                batch.push(contactData);
+
+                if (batch.length >= batchSize || (i === totalRows - 1 && batch.length > 0)) {
+                    console.log(`Upsert batch ${batch.length} contactos...`);
+                    try {
+                        const { error } = await supabase.from('contacts').upsert(batch, { onConflict: 'email_address', ignoreDuplicates: false });
+                        if (error) {
+                            console.error(`Error en batch upsert (fila ${i+1-batch.length+1}):`, error);
+                            for (const singleContact of batch) {
+                                const { error: singleErr } = await supabase.from('contacts').upsert(singleContact, { onConflict: 'email_address', ignoreDuplicates: false });
+                                if (singleErr) { console.warn(`Error importando fila individual (email: ${singleContact.email_address}): ${singleErr.message}`); errorsCount++; } 
+                                else { importedCount++; }
+                            }
+                        } else { importedCount += batch.length; }
+                    } catch (err) { console.error(`Error crítico en batch upsert:`, err); errorsCount += batch.length; }
+                    batch = [];
+                    if (i < totalRows - 1) await new Promise(resolve => setTimeout(resolve, 100)); 
+                }
+            }
+            let finalMessage = `${importedCount} contactos importados/actualizados (${sourceType}).`;
+            if (errorsCount > 0) finalMessage += ` ${errorsCount} filas con errores. Revise consola.`;
+            showAppMessage(finalMessage, importedCount > 0 && errorsCount === 0 ? 'success' : (importedCount > 0 ? 'info' : 'error'));
+            await loadContacts();
+        }
+        
+        function processImportRow(row) {
+            const contact = {
+                email_address: getRowValue(row, 'email_address', ['email', 'correo electrónico']),
+                nombre: getRowValue(row, 'nombre'), apellido: getRowValue(row, 'apellido'),
+                titulo: getRowValue(row, 'título', ['titulo']), genero: getRowValue(row, 'género', ['genero']),
+                cargo: getRowValue(row, 'cargo'), organizacion: getRowValue(row, 'organización', ['organizacion']),
+                acronimo: getRowValue(row, 'acrónimo', ['acronimo']),
+                telefono: getRowValue(row, 'merge_phone', ['telefono', 'teléfono']),
+                organizacion_en_ingles: getRowValue(row, 'org_nombre en inglés'),
+                organizacion_id_externo: getRowValue(row, 'org_id'),
+                org_normalizado_rolac: getBooleanRowValue(row, 'org_normalizadorolac'), 
+                notas: getRowValue(row, 'merge_notes', ['notas'])
+            };
+            orgTypes.forEach(type => contact[`org_tipo_${type}`] = getBooleanRowValue(row, `org_tipo_${type}`));
+            clusters.forEach(cluster => contact[`clust_${cluster.id}`] = getBooleanRowValue(row, `clust_${cluster.id}`));
+            states.forEach(state => contact[`est_${state}`] = getBooleanRowValue(row, `est_${state}`));
+            workingGroups.forEach(group => contact[`grp_${group.id}`] = getBooleanRowValue(row, `grp_${group.id}`));
+            ochaListsConfig.forEach(listConf => {
+                const csvHeaderKey = `list_${listConf.id_in_csv_config.toLowerCase()}`;
+                const dbKey = `list_${listConf.id_in_csv_config.toLowerCase().replace(/-/g,'_')}`;
+                contact[dbKey] = getBooleanRowValue(row, csvHeaderKey);
+            });
+            return contact;
+        }
+
+        function getRowValue(row, primaryKey, alternateKeys = []) {
+            const keysToTry = [primaryKey.toLowerCase(), ...alternateKeys.map(k => k.toLowerCase())];
+            for (const key of keysToTry) {
+                if (row.hasOwnProperty(key) && row[key] !== undefined && row[key] !== null) {
+                    let value = String(row[key]).trim();
+                    return (value.toLowerCase() === "no definido") ? "" : value;
+                }
+            } return ""; 
+        }
+        function getBooleanRowValue(row, primaryKey, alternateKeys = []) {
+            const keysToTry = [primaryKey.toLowerCase(), ...alternateKeys.map(k => k.toLowerCase())];
+            for (const key of keysToTry) {
+                if (row.hasOwnProperty(key) && row[key] !== undefined && row[key] !== null) {
+                    const value = String(row[key]).toLowerCase().trim();
+                    return ['true', '1', 'x', 'si', 'sí', 'verdadero'].includes(value);
+                }
+            } return false; 
+        }
+
+        function exportContacts() { 
+            if (selectedContactIds.size === 0) {
+                showAppMessage('No hay contactos seleccionados para exportar. Seleccione al menos uno.', 'info');
+                return;
+            }
+            const contactsToExport = contacts.filter(c => selectedContactIds.has(c.id));
+
+            const exportData = contactsToExport.map(contact => {
+                const row = {
+                    'email_address': contact.email_address || '', 'Nombre': contact.nombre || '', 'Apellido': contact.apellido || '',
+                    'Título': contact.titulo || '', 'Género': contact.genero || '', 'Cargo': contact.cargo || '',
+                    'Organización': contact.organizacion || '', 'Acrónimo': contact.acronimo || '',
+                    'merge_PHONE': contact.telefono || '',
+                    'org_Nombre en inglés': contact.organizacion_en_ingles || '', 'org_ID': contact.organizacion_id_externo || '',
+                    'org_NormalizadoROLAC': contact.org_normalizado_rolac ? 'TRUE' : 'FALSE',
+                    'merge_NOTES': contact.notas || ''
+                };
+                orgTypes.forEach(type => row[`org_Tipo_${type}`] = contact[`org_tipo_${type}`] ? '1' : '0');
+                clusters.forEach(cluster => row[`clust_${cluster.id}`] = contact[`clust_${cluster.id}`] ? '1' : '0');
+                states.forEach(state => row[`est_${state}`] = contact[`est_${state}`] ? '1' : '0');
+                workingGroups.forEach(group => row[`grp_${group.id}`] = contact[`grp_${group.id}`] ? '1' : '0');
+                ochaListsConfig.forEach(listConf => {
+                     const dbKey = `list_${listConf.id_in_csv_config.toLowerCase().replace(/-/g,'_')}`;
+                     const csvHeaderKey = `list_${listConf.id_in_csv_config}`;
+                     row[csvHeaderKey] = contact[dbKey] ? '1' : '0';
+                });
+                return row;
+            });
+            
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Contactos Seleccionados');
+            XLSX.writeFile(wb, `contactos_seleccionados_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showAppMessage(`${contactsToExport.length} contactos exportados.`, 'success');
+        }
+
+        function handleRealtimeUpdate(payload) {
+            console.log('Realtime update:', payload); let changed = false;
+            if (payload.eventType === 'INSERT') {
+                if (!contacts.find(c => c.id === payload.new.id)) { contacts.push(payload.new); changed = true; }
+            } else if (payload.eventType === 'UPDATE') {
+                const index = contacts.findIndex(c => c.id === payload.new.id);
+                if (index > -1) { contacts[index] = {...contacts[index], ...payload.new}; changed = true; }
+                else { contacts.push(payload.new); changed = true; } 
+            } else if (payload.eventType === 'DELETE') {
+                const idToDelete = payload.old.id || (payload.old.record ? payload.old.record.id : null);
+                if (idToDelete) {
+                    const oldLength = contacts.length;
+                    contacts = contacts.filter(c => c.id !== idToDelete);
+                    if (contacts.length !== oldLength) {
+                        changed = true;
+                        selectedContactIds.delete(idToDelete); 
+                    }
+                }
+            }
+            if (changed) { 
+                contacts.sort((a,b) => (a.apellido || '').localeCompare(b.apellido || '') || (a.nombre || '').localeCompare(b.nombre || ''));
+                applyFilters(); 
+            } 
+        }
+
+        function debounce(func, wait) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); }; }
+        function formatStateName(state) { return state.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
+        function formatOrgType(type) { return type.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
+        function formatListName(listNameInConfig) { return listNameInConfig.replace(/ocha-ven-/gi, '').replace(/-/g, ' ').toUpperCase(); }
+        function showAppMessage(message, type, autoHide = true) { const el = document.getElementById('appStatusMessage'); el.textContent = message; el.className = `status-message status-${type}`; el.style.display = 'block'; if (autoHide) setTimeout(() => { if (el.textContent === message) el.style.display = 'none';}, 7000); }
+        function hideAuthMessages() { ['loginError', 'loginSuccess', 'registerError', 'registerSuccess', 'resetError', 'resetSuccess'].forEach(id => { const el = document.getElementById(id); if(el) {el.textContent = ''; el.style.display = 'none';}}); }
+        function showError(id, msg) { const el = document.getElementById(id); if(!el) return; const sid = id.replace("Error","Success"); const sel=document.getElementById(sid); if(sel){sel.textContent=''; sel.style.display='none';} el.textContent=msg; el.style.display='block'; }
+        function showSuccess(id, msg) { const el = document.getElementById(id); if(!el) return; const eid = id.replace("Success","Error"); const eel=document.getElementById(eid); if(eel){eel.textContent=''; eel.style.display='none';} el.textContent=msg; el.style.display='block'; setTimeout(() => {if(el.textContent===msg){el.textContent=''; el.style.display='none';}}, 7000); }
+        
+        // ---- AUTH FUNCTIONS & EVENT LISTENERS ----
+        supabase.auth.onAuthStateChange(async (event, session) => {  
+            console.log('Auth event:', event, session);
+            const previousUser = currentUser;
+            if (event === "PASSWORD_RECOVERY") { showSuccess('loginSuccess', 'Modo recuperación de contraseña. Actualiza tu contraseña.'); }
+            if (session && session.user) {
+                currentUser = session.user;
+                if (document.getElementById('mainApp').style.display === 'none' || (previousUser && previousUser.id !== currentUser.id) ) {
+                    appInitialized = false; 
+                    showMainApp(); 
+                } else if (document.getElementById('mainApp').style.display === 'block' && !appInitialized) {
+                    await initializeApp();
+                }
+                document.getElementById('userEmail').textContent = currentUser.email;
+            } else { 
+                currentUser = null;
+                if (appInitialized) { 
+                    if (contactChangesChannel) {
+                        try { await supabase.removeChannel(contactChangesChannel); console.log("Removed realtime channel."); } 
+                        catch(e) { console.warn("Error removing old channel:", e); }
+                        contactChangesChannel = null; 
+                    }
+                }
+                appInitialized = false; 
+                showLoginPage();
+            }
+        });
+        function showAuthForm(formToShow) { hideAuthMessages(); ['loginForm', 'registerForm', 'passwordResetForm'].forEach(fId => document.getElementById(fId).style.display = 'none'); document.getElementById(formToShow + 'Form').style.display = 'block'; document.getElementById('linkToRegister').style.display = formToShow === 'login' ? 'block' : 'none'; document.getElementById('linkToPasswordReset').style.display = formToShow === 'login' ? 'block' : 'none'; document.getElementById('linkToLoginFromRegister').style.display = formToShow === 'register' ? 'block' : 'none'; document.getElementById('linkToLoginFromReset').style.display = formToShow === 'reset' ? 'block' : 'none';}
+        async function handleLogin(e) { e.preventDefault(); hideAuthMessages(); const email = document.getElementById('loginEmail').value; const password = document.getElementById('loginPassword').value; try { const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) throw error; showSuccess('loginSuccess', 'Ingreso exitoso...'); } catch (error) { showError('loginError', `Error: ${error.message.includes("Invalid login credentials") ? 'Credenciales inválidas.' : error.message}`); }}
+        async function handleRegister(e) { e.preventDefault(); hideAuthMessages(); const email = document.getElementById('registerEmail').value; const password = document.getElementById('registerPassword').value; try { const { data, error } = await supabase.auth.signUp({ email, password }); if (error) throw error; if (data.user && data.user.identities && data.user.identities.length === 0) { showError('registerError', 'Correo ya registrado.'); } else if (data.user && (data.user.email_confirmed_at === null && data.session === null)) { showSuccess('registerSuccess', '¡Registro exitoso! Revisa tu correo para confirmar.'); } else { showSuccess('registerSuccess', '¡Registro exitoso! Puedes ingresar.'); showAuthForm('login');}} catch (error) { showError('registerError', `Error registro: ${error.message}`); }}
+        async function handlePasswordResetRequest(e) { e.preventDefault(); hideAuthMessages(); const email = document.getElementById('resetEmail').value; try { const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] }); if (error) throw error; showSuccess('resetSuccess', 'Si existe cuenta, se envió enlace de reseteo.'); } catch (error) { showError('resetError', 'Error reseteo: ' + error.message); }}
+        async function handleLogout() { showAppMessage("Cerrando sesión...", "info", false); const { error } = await supabase.auth.signOut(); if (error) { console.error("Error logout:", error); showAppMessage("Error cerrando sesión: " + error.message, "error"); }}
+        
+        function showMainApp() { 
+            console.log('Showing main app for user:', currentUser?.email); 
+            document.getElementById('loginPage').style.display = 'none'; 
+            document.getElementById('mainApp').style.display = 'block'; 
+            document.getElementById('siteFooter').style.display = 'block';
+            if (currentUser) document.getElementById('userEmail').textContent = currentUser.email; 
+            if (!appInitialized) initializeApp(); 
+        }
+        function showLoginPage() { 
+            console.log('Showing login page'); 
+            document.getElementById('loginPage').style.display = 'flex'; 
+            document.getElementById('mainApp').style.display = 'none'; 
+            document.getElementById('siteFooter').style.display = 'none';
+            showAuthForm('login'); 
+        }
+        
+        // ---- CONTACT MANAGEMENT FUNCTIONS ----
+        async function loadContacts() {
+            showAppMessage('Cargando contactos...', 'info', false);
+            let allContacts = [];
+            let offset = 0;
+            const limit = 1000; 
+            let hasMore = true;
+            let page = 0;
+
+            try {
+                while (hasMore) {
+                    page++;
+                    showAppMessage(`Cargando contactos... (Página ${page})`, 'info', false);
+
+                    const { data, error } = await supabase
+                        .from('contacts')
+                        .select('*') 
+                        // .order('apellido', { ascending: true }) // Sorting handled after all data is fetched
+                        // .order('nombre', { ascending: true })
+                        .range(offset, offset + limit - 1);
+
+                    if (error) {
+                        console.error('Error cargando página de contactos:', error);
+                        throw error; 
+                    }
+
+                    if (data && data.length > 0) {
+                        allContacts = allContacts.concat(data);
+                    }
+                    
+                    if (!data || data.length < limit) {
+                        hasMore = false;
+                    } else {
+                        offset += limit;
+                    }
+                    
+                    if (hasMore) {
+                        await new Promise(resolve => setTimeout(resolve, 100)); 
+                    }
+                }
+                
+                allContacts.sort((a,b) => (a.apellido || '').localeCompare(b.apellido || '') || (a.nombre || '').localeCompare(b.nombre || ''));
+                contacts = allContacts;
+                console.log(`Total de contactos cargados: ${contacts.length}`);
+                
+                applyFilters(); 
+
+                let msg = `Se ${contacts.length === 1 ? 'cargó 1 contacto' : 'cargaron ' + contacts.length + ' contactos'}.`;
+                if (contacts.length === 0 && !isAnyFilterActive()) {
+                    msg = 'No hay contactos en la base de datos.';
+                }
+                showAppMessage(msg, contacts.length > 0 ? 'success' : 'info');
+
+            } catch (error) {
+                console.error('Error cargando todos los contactos con paginación:', error);
+                showAppMessage('Error cargando contactos: ' + error.message, 'error');
+                contacts = []; 
+                applyFilters(); 
+            }
+        }
+
+        function isAnyFilterActive() {
+            return activeFilters.search || activeFilters.state || activeFilters.orgType || activeFilters.ochaList || 
+                   activeFilters.acronyms.length > 0 || activeFilters.clusters.length > 0 || activeFilters.groups.length > 0;
+        }
+
+        function handleSelectAllChange(event) {
+            const isChecked = event.target.checked;
+            selectedContactIds.clear();
+            const checkboxes = document.querySelectorAll('.contact-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+                if (isChecked) {
+                    selectedContactIds.add(checkbox.dataset.contactId);
+                }
+            });
+            console.log("Selected IDs after select all:", selectedContactIds);
+        }
+
+        function handleContactCheckboxChange(event) {
+            const contactId = event.target.dataset.contactId;
+            if (event.target.checked) {
+                selectedContactIds.add(contactId);
+            } else {
+                selectedContactIds.delete(contactId);
+            }
+            const allContactCheckboxes = document.querySelectorAll('.contact-checkbox');
+            const allVisibleFilteredContactsIds = new Set(filteredContacts.map(c => c.id));
+            
+            let allVisibleSelected = true;
+            if (filteredContacts.length === 0) {
+                allVisibleSelected = false;
+            } else {
+                for (const contact of filteredContacts) {
+                    if (!selectedContactIds.has(contact.id)) {
+                        allVisibleSelected = false;
+                        break;
+                    }
+                }
+            }
+            document.getElementById('selectAllCheckbox').checked = allVisibleSelected;
+            console.log("Selected IDs:", selectedContactIds);
+        }
+        
+        function handleSendEmail() {
+            if (selectedContactIds.size === 0) {
+                showAppMessage('No hay contactos seleccionados para enviar correo.', 'info');
+                return;
+            }
+            const selectedEmails = contacts
+                .filter(c => selectedContactIds.has(c.id) && c.email_address)
+                .map(c => c.email_address);
+
+            if (selectedEmails.length === 0) {
+                showAppMessage('Los contactos seleccionados no tienen correos electrónicos.', 'info');
+                return;
+            }
+            const mailtoLink = `mailto:?bcc=${selectedEmails.join(',')}`;
+            if (mailtoLink.length > 2000) {
+                 showAppMessage(`Demasiados correos para un enlace mailto (${selectedEmails.length}). Por favor, seleccione menos contactos o copie los correos manualmente.`, 'warning', false);
+                 console.warn("Mailto link too long:", mailtoLink);
+                 try {
+                    navigator.clipboard.writeText(selectedEmails.join(', '));
+                    showAppMessage(`Enlace mailto demasiado largo. Correos (${selectedEmails.length}) copiados al portapapeles.`, 'info', false);
+                 } catch (err) {
+                    console.error("Error al copiar al portapapeles: ", err);
+                 }
+                 return;
+            }
+            window.location.href = mailtoLink;
+        }
+
+        function renderContacts() {
+            const tbody = document.getElementById('contactsTableBody');
+            tbody.innerHTML = '';
+            
+            if (filteredContacts.length === 0) {
+                let message = 'No se encontraron contactos con los filtros aplicados.';
+                if (contacts.length === 0 && !isAnyFilterActive()) {
+                    message = 'No hay contactos en la base de datos.';
+                }
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem;">${message}</td></tr>`;
+                document.getElementById('selectAllCheckbox').checked = false;
+                return;
+            }
+
+            let allVisibleAreSelected = true;
+
+            const createCellWithTitle = (text, fullText, isLink = false, href = '#') => {
+                const td = document.createElement('td');
+                const displayFullText = fullText || text || ''; 
+                if (isLink) {
+                    const a = document.createElement('a');
+                    a.href = href;
+                    a.textContent = text || '';
+                    td.appendChild(a);
+                } else {
+                    td.textContent = text || '';
+                }
+                td.title = displayFullText; 
+                return td;
+            };
+
+            filteredContacts.forEach(contact => {
+                const tr = document.createElement('tr');
+                const isSelected = selectedContactIds.has(contact.id);
+                if (!isSelected) allVisibleAreSelected = false;
+
+                const checkboxTd = document.createElement('td');
+                const checkboxInput = document.createElement('input');
+                checkboxInput.type = 'checkbox';
+                checkboxInput.className = 'contact-checkbox';
+                checkboxInput.dataset.contactId = contact.id;
+                checkboxInput.checked = isSelected;
+                checkboxInput.addEventListener('change', handleContactCheckboxChange);
+                checkboxTd.appendChild(checkboxInput);
+                tr.appendChild(checkboxTd);
+
+                const nombreCompletoText = `${contact.nombre || ''} ${contact.apellido || ''}`.trim();
+                tr.appendChild(createCellWithTitle(nombreCompletoText, nombreCompletoText));
+                tr.appendChild(createCellWithTitle(contact.email_address, contact.email_address, true, `mailto:${contact.email_address || ''}`));
+                tr.appendChild(createCellWithTitle(contact.organizacion, contact.organizacion));
+                tr.appendChild(createCellWithTitle(contact.cargo, contact.cargo));
+                tr.appendChild(createCellWithTitle(contact.telefono, contact.telefono));
+
+                const actionsTd = document.createElement('td');
+                actionsTd.className = 'actions-cell';
+                actionsTd.innerHTML = `
+                    <button class="btn btn-primary btn-sm" onclick="editContact('${contact.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteContact('${contact.id}')" style="margin-left: 0.5rem;" title="Eliminar"><i class="fas fa-trash"></i></button>
+                `;
+                tr.appendChild(actionsTd);
+                
+                tbody.appendChild(tr);
+            });
+            document.getElementById('selectAllCheckbox').checked = allVisibleAreSelected && filteredContacts.length > 0;
+        }
+
+
+        async function handleContactSubmit(e) { 
+            e.preventDefault();
+            const contactId = document.getElementById('contactId').value;
+            const contactData = {
+                nombre: document.getElementById('nombre').value.trim(), 
+                apellido: document.getElementById('apellido').value.trim(),
+                email_address: document.getElementById('email_address').value.trim().toLowerCase(), 
+                titulo: document.getElementById('titulo').value.trim(),
+                genero: document.getElementById('genero').value, 
+                cargo: document.getElementById('cargo').value.trim(),
+                organizacion: document.getElementById('organizacion').value.trim(), 
+                acronimo: document.getElementById('acronimo').value.trim().toUpperCase(),
+                telefono: document.getElementById('telefono').value.trim(),
+            };
+
+            orgTypes.forEach(type => contactData[`org_tipo_${type}`] = document.getElementById(`org_tipo_${type}`).checked);
+            clusters.forEach(cluster => contactData[`clust_${cluster.id}`] = document.getElementById(`clust_${cluster.id}`).checked);
+            states.forEach(state => contactData[`est_${state}`] = document.getElementById(`est_${state}`).checked);
+            workingGroups.forEach(group => contactData[`grp_${group.id}`] = document.getElementById(`grp_${group.id}`).checked);
+            
+            if (!contactData.nombre || !contactData.apellido || !contactData.email_address || !contactData.email_address.includes('@')) {
+                showAppMessage('Nombre, Apellido y Correo Electrónico válido son requeridos.', 'error');
+                return;
+            }
+            console.log("Datos a guardar (manual, simplificado):", JSON.parse(JSON.stringify(contactData)));
+
+            try {
+                showAppMessage('Guardando contacto...', 'info', false);
+                let opError, opData;
+                if (contactId) { 
+                    const { data, error } = await supabase.from('contacts').update(contactData).eq('id', contactId).select();
+                    opError = error; opData = data;
+                } else { 
+                    const { data, error } = await supabase.from('contacts').insert([contactData]).select();
+                    opError = error; opData = data;
+                }
+                if (opError) throw opError; 
+                showAppMessage(`Contacto ${contactId ? 'actualizado' : 'creado'} exitosamente`, 'success');
+                console.log("Respuesta Supabase (guardado manual):", opData);
+                closeContactModal(); 
+                // Realtime update should handle table refresh. If it was a new contact, sorting might need re-fetch or local insert+sort.
+                // Forcing a sort and re-filter if it's a new contact and not picked up by realtime immediately.
+                if (!contactId && opData && opData[0]) {
+                    if (!contacts.find(c => c.id === opData[0].id)) contacts.push(opData[0]);
+                    contacts.sort((a,b) => (a.apellido || '').localeCompare(b.apellido || '') || (a.nombre || '').localeCompare(b.nombre || ''));
+                    applyFilters();
+                }
+            } catch (error) { 
+                console.error("Error guardando contacto (manual):", error, "Datos:", contactData);
+                let userMsg = `Error guardando: ${error.message}.`;
+                if (error.message.includes('violates unique constraint') && error.message.includes('email_address')) userMsg = 'Error: Correo ya existe.';
+                else if (error.message.includes('violates not-null constraint')) userMsg = 'Error: Campos requeridos faltantes (verifique DB).';
+                showAppMessage(userMsg, 'error'); 
+            }
+        }
+
+        async function editContact(id) { 
+            const contact = contacts.find(c => c.id === id); 
+            if (!contact) { showAppMessage('Error: Contacto no encontrado.', 'error'); return; }
+            
+            document.getElementById('modalTitle').textContent = 'Editar Contacto';
+            document.getElementById('contactForm').reset(); 
+            document.getElementById('contactId').value = id;
+            
+            ['nombre', 'apellido', 'email_address', 'titulo', 'genero', 'cargo', 'organizacion', 'acronimo', 'telefono']
+             .forEach(field => {
+                const el = document.getElementById(field);
+                if (el) el.value = contact[field] || '';
+            });
+            
+            orgTypes.forEach(type => document.getElementById(`org_tipo_${type}`).checked = contact[`org_tipo_${type}`] || false);
+            clusters.forEach(cluster => document.getElementById(`clust_${cluster.id}`).checked = contact[`clust_${cluster.id}`] || false);
+            states.forEach(state => document.getElementById(`est_${state}`).checked = contact[`est_${state}`] || false);
+            workingGroups.forEach(group => document.getElementById(`grp_${group.id}`).checked = contact[`grp_${group.id}`] || false);
+            
+            document.getElementById('contactModal').classList.add('active');
+        }
+        async function deleteContact(id) { 
+            if (!confirm('¿Está seguro de eliminar este contacto? Esta acción no se puede deshacer.')) return; 
+            try { 
+                showAppMessage('Eliminando contacto...', 'info', false); 
+                const { error } = await supabase.from('contacts').delete().eq('id', id); 
+                if (error) throw error; 
+                showAppMessage('Contacto eliminado exitosamente', 'success');
+                selectedContactIds.delete(id); 
+            } catch (error) { showAppMessage('Error eliminando contacto: ' + error.message, 'error'); }
+        }
+        function showAddContactModal() { 
+            document.getElementById('modalTitle').textContent = 'Nuevo Contacto'; 
+            document.getElementById('contactForm').reset(); 
+            document.getElementById('contactId').value = ''; 
+            document.getElementById('contactModal').classList.add('active');
+        }
+        function closeContactModal() { document.getElementById('contactModal').classList.remove('active');}
+
+        // ---- FILTER FUNCTIONS ----
+        function toggleFilter(type, id) { 
+            const element = document.querySelector(`[data-${type}="${id}"]`); 
+            const filterList = type === 'cluster' ? activeFilters.clusters : activeFilters.groups; 
+            const index = filterList.indexOf(id); 
+            if (index > -1) { filterList.splice(index, 1); element.classList.remove('active'); } 
+            else { filterList.push(id); element.classList.add('active'); } 
+            applyFilters();
+        }
+        function handleSearch() { activeFilters.search = document.getElementById('searchInput').value.toLowerCase().trim(); applyFilters(); }
+        
+        function applyFilters() { 
+            const previouslySelectedAcronyms = [...activeFilters.acronyms];
+
+            activeFilters.state = document.getElementById('stateFilter').value; 
+            activeFilters.orgType = document.getElementById('orgTypeFilter').value; 
+            activeFilters.ochaList = document.getElementById('ochaListFilter').value;
+
+            // --- Dynamic options update ---
+            // A. For Acronyms
+            let contactsForAcronymOptions = contacts.filter(contact => {
+                if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false;
+                if (activeFilters.orgType && !contact[`org_tipo_${activeFilters.orgType}`]) return false;
+                if (activeFilters.ochaList && !contact[activeFilters.ochaList]) return false;
+                if (activeFilters.clusters.length > 0 && !activeFilters.clusters.every(c => contact[`clust_${c}`])) return false;
+                if (activeFilters.groups.length > 0 && !activeFilters.groups.every(g => contact[`grp_${g}`])) return false;
+                return true;
+            });
+            updateAcronymFilterCheckboxesUI(contactsForAcronymOptions, previouslySelectedAcronyms); // Updates activeFilters.acronyms internally
+
+            // B. For State select
+            let contactsForStateOptions = contacts.filter(contact => {
+                if (activeFilters.orgType && !contact[`org_tipo_${activeFilters.orgType}`]) return false;
+                if (activeFilters.ochaList && !contact[activeFilters.ochaList]) return false;
+                if (activeFilters.acronyms.length > 0) {
+                    const contactAcronym = (contact.acronimo && contact.acronimo.trim() !== '') ? contact.acronimo.trim() : "SIN_ACRONIMO";
+                    if (!activeFilters.acronyms.includes(contactAcronym)) return false;
+                }
+                if (activeFilters.clusters.length > 0 && !activeFilters.clusters.every(c => contact[`clust_${c}`])) return false;
+                if (activeFilters.groups.length > 0 && !activeFilters.groups.every(g => contact[`grp_${g}`])) return false;
+                return true;
+            });
+            const availableStates = new Map();
+            contactsForStateOptions.forEach(c => { states.forEach(s => { if(c[`est_${s}`]) availableStates.set(s, (availableStates.get(s) || 0) + 1); }); });
+            updateSelectWithOptions('stateFilter', availableStates, activeFilters.state, states, s => s, formatStateName, 'estados');
+
+            // C. For OrgType select
+            let contactsForOrgTypeOptions = contacts.filter(contact => {
+                if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false; // Use updated activeFilters.state
+                if (activeFilters.ochaList && !contact[activeFilters.ochaList]) return false;
+                if (activeFilters.acronyms.length > 0) {
+                    const contactAcronym = (contact.acronimo && contact.acronimo.trim() !== '') ? contact.acronimo.trim() : "SIN_ACRONIMO";
+                    if (!activeFilters.acronyms.includes(contactAcronym)) return false;
+                }
+                if (activeFilters.clusters.length > 0 && !activeFilters.clusters.every(c => contact[`clust_${c}`])) return false;
+                if (activeFilters.groups.length > 0 && !activeFilters.groups.every(g => contact[`grp_${g}`])) return false;
+                return true;
+            });
+            const availableOrgTypes = new Map();
+            contactsForOrgTypeOptions.forEach(c => { orgTypes.forEach(ot => { if(c[`org_tipo_${ot}`]) availableOrgTypes.set(ot, (availableOrgTypes.get(ot) || 0) + 1); }); });
+            updateSelectWithOptions('orgTypeFilter', availableOrgTypes, activeFilters.orgType, orgTypes, ot => ot, formatOrgType, 'tipos');
+
+            // D. For OCHAList select
+            let contactsForOchaListOptions = contacts.filter(contact => {
+                if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false; 
+                if (activeFilters.orgType && !contact[`org_tipo_${activeFilters.orgType}`]) return false; 
+                if (activeFilters.acronyms.length > 0) {
+                    const contactAcronym = (contact.acronimo && contact.acronimo.trim() !== '') ? contact.acronimo.trim() : "SIN_ACRONIMO";
+                    if (!activeFilters.acronyms.includes(contactAcronym)) return false;
+                }
+                if (activeFilters.clusters.length > 0 && !activeFilters.clusters.every(c => contact[`clust_${c}`])) return false;
+                if (activeFilters.groups.length > 0 && !activeFilters.groups.every(g => contact[`grp_${g}`])) return false;
+                return true;
+            });
+            const availableOchaLists = new Map();
+            contactsForOchaListOptions.forEach(c => {
+                allOchaListKeysAndNames.forEach(lc => { if(c[lc.value]) availableOchaLists.set(lc.value, (availableOchaLists.get(lc.value) || 0) + 1); });
+            });
+            updateSelectWithOptions('ochaListFilter', availableOchaLists, activeFilters.ochaList, allOchaListKeysAndNames, item => item.value, item => formatListName(item.name), 'listas');
+
+            // --- Actual filtering for table ---
+            filteredContacts = contacts.filter(contact => { 
+                if (activeFilters.search) { 
+                    const s = activeFilters.search; 
+                    if (!((contact.nombre || '').toLowerCase().includes(s) || (contact.apellido || '').toLowerCase().includes(s) || 
+                          (contact.email_address || '').toLowerCase().includes(s) || (contact.organizacion || '').toLowerCase().includes(s) || 
+                          (contact.acronimo || '').toLowerCase().includes(s) || (contact.cargo || '').toLowerCase().includes(s) || 
+                          (contact.telefono || '').toLowerCase().includes(s) )) return false;
+                } 
+                if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false; 
+                if (activeFilters.orgType && !contact[`org_tipo_${activeFilters.orgType}`]) return false; 
+                if (activeFilters.ochaList && !contact[activeFilters.ochaList]) return false;
+                
+                if (activeFilters.acronyms.length > 0) {
+                    const contactAcronym = (contact.acronimo && contact.acronimo.trim() !== '') ? contact.acronimo.trim() : "SIN_ACRONIMO";
+                    if (!activeFilters.acronyms.includes(contactAcronym)) return false;
+                }
+                if (activeFilters.clusters.length > 0 && !activeFilters.clusters.every(c => contact[`clust_${c}`])) return false; 
+                if (activeFilters.groups.length > 0 && !activeFilters.groups.every(g => contact[`grp_${g}`])) return false; 
+                return true; 
+            }); 
+            renderContacts(); 
+            updateKPIs();
+        }
+
+        function resetFilters() { 
+            activeFilters = { search: '', state: '', orgType: '', ochaList: '', acronyms: [], clusters: [], groups: [] }; 
+            document.getElementById('searchInput').value = ''; 
+            document.getElementById('stateFilter').value = ''; 
+            document.getElementById('orgTypeFilter').value = ''; 
+            document.getElementById('ochaListFilter').value = '';
+            document.getElementById('searchAcronymFilter').value = '';
+            
+            document.querySelectorAll('#clusterGrid .icon-item.active, #groupGrid .icon-item.active').forEach(item => item.classList.remove('active')); 
+            
+            selectedContactIds.clear(); 
+            applyFilters(); 
+            showAppMessage("Filtros reiniciados.", "info");
+        }
+        function updateKPIs() { 
+            const kpiGrid = document.getElementById('kpiGrid'); kpiGrid.innerHTML = ''; 
+            createKPICard(kpiGrid, { icon: 'fa-users', value: filteredContacts.length, label: 'Contactos' }); 
+            const orgs = new Set(filteredContacts.map(c => c.organizacion).filter(Boolean)); 
+            createKPICard(kpiGrid, { icon: 'fa-building', value: orgs.size, label: 'Organizaciones' }); 
+            const activeClust = new Set(); filteredContacts.forEach(c => clusters.forEach(cl => { if (c[`clust_${cl.id}`]) activeClust.add(cl.name); }));
+            createKPICard(kpiGrid, { icon: 'fa-layer-group', value: activeClust.size, label: 'Sectores Activos' }); 
+            const activeSt = new Set(); filteredContacts.forEach(c => states.forEach(st => { if (c[`est_${st}`]) activeSt.add(formatStateName(st)); }));
+            createKPICard(kpiGrid, { icon: 'fa-map-marked-alt', value: activeSt.size, label: 'Estados Cubiertos' });
+        }
+        function createKPICard(container, data) { const div = document.createElement('div'); div.className = 'kpi-card'; div.innerHTML = `<i class="fas ${data.icon} kpi-icon"></i><div class="kpi-value">${data.value}</div><div class="kpi-label">${data.label}</div>`; container.appendChild(div);}
+    </script>
+</body>
+</html>
