@@ -302,6 +302,22 @@
             </form>
             <div id="resetError" class="status-message status-error" style="margin-top: 1rem;"></div>
             <div id="resetSuccess" class="status-message status-success" style="margin-top: 1rem;"></div>
+			<form id="newPasswordForm" style="display:none;">
+                <h3 class="login-form-title">Nueva Contraseña</h3>
+                <div class="form-group">
+                    <label class="form-label" for="newPassword">Nueva Contraseña</label>
+                    <input type="password" id="newPassword" class="form-control" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">Confirmar Contraseña</label>
+                    <input type="password" id="confirmPassword" class="form-control" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-key"></i> Actualizar Contraseña
+                </button>
+            </form>
+            <div id="newPasswordError" class="status-message status-error" style="margin-top: 1rem;"></div>
+            <div id="newPasswordSuccess" class="status-message status-success" style="margin-top: 1rem;"></div>
             <div class="login-links">
                 <p id="linkToRegister">¿No tienes cuenta? <a href="#" id="showRegisterLink">Regístrate</a></p>
                 <p id="linkToLoginFromRegister" style="display:none;">¿Ya tienes cuenta? <a href="#" id="showLoginFromRegisterLink">Ingresa</a></p>
@@ -688,8 +704,9 @@
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('registerForm').addEventListener('submit', handleRegister);
             document.getElementById('passwordResetForm').addEventListener('submit', handlePasswordResetRequest);
+			document.getElementById('newPasswordForm').addEventListener('submit', handleNewPassword);
             document.getElementById('showRegisterLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('register'); });
-            document.getElementById('showPasswordResetLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('reset'); });
+            document.getElementById('showPasswordResetLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('passwordReset'); });
             document.getElementById('showLoginFromRegisterLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('login'); });
             document.getElementById('showLoginFromResetLink').addEventListener('click', (e) => { e.preventDefault(); showAuthForm('login'); });
         }
@@ -734,6 +751,30 @@
         window.addEventListener('DOMContentLoaded', () => { 
             setupAuthEventListeners(); 
             setupConfigPasswordToggle();
+            
+            // Forzar registro de eventos de autenticación
+            // Esta sección puede ser redundante si setupAuthEventListeners es confiable,
+            // pero se mantiene como está, ya que `onclick =` reemplaza el listener.
+            setTimeout(() => {
+                const resetLink = document.getElementById('showPasswordResetLink');
+                if (resetLink) {
+                    resetLink.onclick = function(e) {
+                        e.preventDefault();
+                        // console.log('Reset link clicked!'); // Para debug
+                        showAuthForm('passwordReset');
+                        return false;
+                    };
+                }
+                
+                const loginFromResetLink = document.getElementById('showLoginFromResetLink');
+                if (loginFromResetLink) {
+                    loginFromResetLink.onclick = function(e) {
+                        e.preventDefault();
+                        showAuthForm('login');
+                        return false;
+                    };
+                }
+            }, 100);
         });
 
 
@@ -986,7 +1027,7 @@
         function formatOrgType(type) { return type.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
         function formatListName(listNameInConfig) { return listNameInConfig.replace(/ocha-ven-/gi, '').replace(/-/g, ' ').toUpperCase(); }
         function showAppMessage(message, type, autoHide = true) { const el = document.getElementById('appStatusMessage'); el.textContent = message; el.className = `status-message status-${type}`; el.style.display = 'block'; if (autoHide) setTimeout(() => { if (el.textContent === message) el.style.display = 'none';}, 7000); }
-        function hideAuthMessages() { ['loginError', 'loginSuccess', 'registerError', 'registerSuccess', 'resetError', 'resetSuccess'].forEach(id => { const el = document.getElementById(id); if(el) {el.textContent = ''; el.style.display = 'none';}}); }
+        function hideAuthMessages() { ['loginError', 'loginSuccess', 'registerError', 'registerSuccess', 'resetError', 'resetSuccess', 'newPasswordError', 'newPasswordSuccess'].forEach(id => { const el = document.getElementById(id); if(el) {el.textContent = ''; el.style.display = 'none';}}); }
         function showError(id, msg) { const el = document.getElementById(id); if(!el) return; const sid = id.replace("Error","Success"); const sel=document.getElementById(sid); if(sel){sel.textContent=''; sel.style.display='none';} el.textContent=msg; el.style.display='block'; }
         function showSuccess(id, msg) { const el = document.getElementById(id); if(!el) return; const eid = id.replace("Success","Error"); const eel=document.getElementById(eid); if(eel){eel.textContent=''; eel.style.display='none';} el.textContent=msg; el.style.display='block'; setTimeout(() => {if(el.textContent===msg){el.textContent=''; el.style.display='none';}}, 7000); }
         
@@ -994,7 +1035,10 @@
         supabase.auth.onAuthStateChange(async (event, session) => {  
             console.log('Auth event:', event, session);
             const previousUser = currentUser;
-            if (event === "PASSWORD_RECOVERY") { showSuccess('loginSuccess', 'Modo recuperación de contraseña. Actualiza tu contraseña.'); }
+            if (event === "PASSWORD_RECOVERY") { 
+                showAuthForm('newPassword'); 
+                showSuccess('newPasswordSuccess', 'Ingrese su nueva contraseña.'); 
+            }
             if (session && session.user) {
                 currentUser = session.user;
                 if (document.getElementById('mainApp').style.display === 'none' || (previousUser && previousUser.id !== currentUser.id) ) {
@@ -1017,10 +1061,95 @@
                 showLoginPage();
             }
         });
-        function showAuthForm(formToShow) { hideAuthMessages(); ['loginForm', 'registerForm', 'passwordResetForm'].forEach(fId => document.getElementById(fId).style.display = 'none'); document.getElementById(formToShow + 'Form').style.display = 'block'; document.getElementById('linkToRegister').style.display = formToShow === 'login' ? 'block' : 'none'; document.getElementById('linkToPasswordReset').style.display = formToShow === 'login' ? 'block' : 'none'; document.getElementById('linkToLoginFromRegister').style.display = formToShow === 'register' ? 'block' : 'none'; document.getElementById('linkToLoginFromReset').style.display = formToShow === 'reset' ? 'block' : 'none';}
+        function showAuthForm(formToShow) { 
+            hideAuthMessages(); 
+            ['loginForm', 'registerForm', 'passwordResetForm', 'newPasswordForm'].forEach(fId => 
+                document.getElementById(fId).style.display = 'none'
+            ); 
+            document.getElementById(formToShow + 'Form').style.display = 'block'; 
+            
+            document.getElementById('linkToRegister').style.display = formToShow === 'login' ? 'block' : 'none'; 
+            document.getElementById('linkToPasswordReset').style.display = formToShow === 'login' ? 'block' : 'none'; 
+            document.getElementById('linkToLoginFromRegister').style.display = formToShow === 'register' ? 'block' : 'none'; 
+            document.getElementById('linkToLoginFromReset').style.display = formToShow === 'passwordReset' ? 'block' : 'none';
+            
+            if (formToShow === 'newPassword') {
+                ['linkToRegister', 'linkToPasswordReset', 'linkToLoginFromRegister', 'linkToLoginFromReset'].forEach(linkId => {
+                    document.getElementById(linkId).style.display = 'none';
+                });
+            }
+        }
         async function handleLogin(e) { e.preventDefault(); hideAuthMessages(); const email = document.getElementById('loginEmail').value; const password = document.getElementById('loginPassword').value; try { const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) throw error; showSuccess('loginSuccess', 'Ingreso exitoso...'); } catch (error) { showError('loginError', `Error: ${error.message.includes("Invalid login credentials") ? 'Credenciales inválidas.' : error.message}`); }}
         async function handleRegister(e) { e.preventDefault(); hideAuthMessages(); const email = document.getElementById('registerEmail').value; const password = document.getElementById('registerPassword').value; try { const { data, error } = await supabase.auth.signUp({ email, password }); if (error) throw error; if (data.user && data.user.identities && data.user.identities.length === 0) { showError('registerError', 'Correo ya registrado.'); } else if (data.user && (data.user.email_confirmed_at === null && data.session === null)) { showSuccess('registerSuccess', '¡Registro exitoso! Revisa tu correo para confirmar.'); } else { showSuccess('registerSuccess', '¡Registro exitoso! Puedes ingresar.'); showAuthForm('login');}} catch (error) { showError('registerError', `Error registro: ${error.message}`); }}
-        async function handlePasswordResetRequest(e) { e.preventDefault(); hideAuthMessages(); const email = document.getElementById('resetEmail').value; try { const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] }); if (error) throw error; showSuccess('resetSuccess', 'Si existe cuenta, se envió enlace de reseteo.'); } catch (error) { showError('resetError', 'Error reseteo: ' + error.message); }}
+        async function handlePasswordResetRequest(e) { 
+            e.preventDefault(); 
+            hideAuthMessages(); 
+            const email = document.getElementById('resetEmail').value; 
+            try { 
+                const { error } = await supabase.auth.resetPasswordForEmail(email, { 
+                    redirectTo: 'https://ochavenezuela.github.io/contactos-humanitarios-venezuela/' 
+                }); 
+                if (error) throw error; 
+                showSuccess('resetSuccess', 'Si existe cuenta, se envió enlace de reseteo.'); 
+            } catch (error) { 
+                showError('resetError', 'Error reseteo: ' + error.message); 
+            }
+        }
+		async function handleNewPassword(e) {
+            e.preventDefault();
+            hideAuthMessages(); // Clear previous messages from newPassword form
+
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showError('newPasswordError', 'Las contraseñas no coinciden.');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showError('newPasswordError', 'La contraseña debe tener al menos 6 caracteres.');
+                return;
+            }
+
+            try {
+                const { error: updateError } = await supabase.auth.updateUser({
+                    password: newPassword
+                });
+
+                if (updateError) throw updateError;
+
+                // Message on the newPassword form itself indicating success before transition
+                showSuccess('newPasswordSuccess', 'Contraseña actualizada exitosamente. Redirigiendo a la página de ingreso...');
+
+                // Sign out the user. onAuthStateChange will handle showing the login page.
+                const { error: signOutError } = await supabase.auth.signOut();
+                if (signOutError) {
+                    // Log error, but proceed to show login form manually as a fallback
+                    console.error("Error during sign out after password update:", signOutError);
+                    showAuthForm('login'); // Manually show login form
+                    hideAuthMessages(); // Clear messages from previous form
+                    showSuccess('loginSuccess', 'Contraseña actualizada. Ingrese con su nueva contraseña. (Error al cerrar sesión automáticamente)');
+                    return;
+                }
+
+                // At this point, onAuthStateChange should have been (or will be shortly) triggered for SIGNED_OUT.
+                // showLoginPage() called by onAuthStateChange will display the login form and clear messages.
+                // We need to make sure the specific success message is visible on the login form.
+                // A slight delay might be needed if onAuthStateChange takes a moment to clear messages.
+                setTimeout(() => {
+                    // showAuthForm('login') might be redundant if onAuthStateChange is quick,
+                    // but doesn't hurt to ensure it's the active form.
+                    // However, onAuthStateChange for SIGNED_OUT calls showLoginPage -> showAuthForm('login').
+                    // So we only need to ensure the correct message is displayed.
+                    hideAuthMessages(); // Clear any generic messages set by showAuthForm in showLoginPage
+                    showSuccess('loginSuccess', 'Contraseña actualizada. Puede ingresar con su nueva contraseña.');
+                }, 100); // Small delay to allow onAuthStateChange to process first
+
+            } catch (error) {
+                showError('newPasswordError', 'Error actualizando contraseña: ' + error.message);
+            }
+        }
         async function handleLogout() { showAppMessage("Cerrando sesión...", "info", false); const { error } = await supabase.auth.signOut(); if (error) { console.error("Error logout:", error); showAppMessage("Error cerrando sesión: " + error.message, "error"); }}
         
         function showMainApp() { 
@@ -1056,8 +1185,6 @@
                     const { data, error } = await supabase
                         .from('contacts')
                         .select('*') 
-                        // .order('apellido', { ascending: true }) // Sorting handled after all data is fetched
-                        // .order('nombre', { ascending: true })
                         .range(offset, offset + limit - 1);
 
                     if (error) {
@@ -1278,8 +1405,6 @@
                 showAppMessage(`Contacto ${contactId ? 'actualizado' : 'creado'} exitosamente`, 'success');
                 console.log("Respuesta Supabase (guardado manual):", opData);
                 closeContactModal(); 
-                // Realtime update should handle table refresh. If it was a new contact, sorting might need re-fetch or local insert+sort.
-                // Forcing a sort and re-filter if it's a new contact and not picked up by realtime immediately.
                 if (!contactId && opData && opData[0]) {
                     if (!contacts.find(c => c.id === opData[0].id)) contacts.push(opData[0]);
                     contacts.sort((a,b) => (a.apellido || '').localeCompare(b.apellido || '') || (a.nombre || '').localeCompare(b.nombre || ''));
@@ -1351,8 +1476,6 @@
             activeFilters.orgType = document.getElementById('orgTypeFilter').value; 
             activeFilters.ochaList = document.getElementById('ochaListFilter').value;
 
-            // --- Dynamic options update ---
-            // A. For Acronyms
             let contactsForAcronymOptions = contacts.filter(contact => {
                 if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false;
                 if (activeFilters.orgType && !contact[`org_tipo_${activeFilters.orgType}`]) return false;
@@ -1361,9 +1484,8 @@
                 if (activeFilters.groups.length > 0 && !activeFilters.groups.every(g => contact[`grp_${g}`])) return false;
                 return true;
             });
-            updateAcronymFilterCheckboxesUI(contactsForAcronymOptions, previouslySelectedAcronyms); // Updates activeFilters.acronyms internally
+            updateAcronymFilterCheckboxesUI(contactsForAcronymOptions, previouslySelectedAcronyms); 
 
-            // B. For State select
             let contactsForStateOptions = contacts.filter(contact => {
                 if (activeFilters.orgType && !contact[`org_tipo_${activeFilters.orgType}`]) return false;
                 if (activeFilters.ochaList && !contact[activeFilters.ochaList]) return false;
@@ -1379,9 +1501,8 @@
             contactsForStateOptions.forEach(c => { states.forEach(s => { if(c[`est_${s}`]) availableStates.set(s, (availableStates.get(s) || 0) + 1); }); });
             updateSelectWithOptions('stateFilter', availableStates, activeFilters.state, states, s => s, formatStateName, 'estados');
 
-            // C. For OrgType select
             let contactsForOrgTypeOptions = contacts.filter(contact => {
-                if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false; // Use updated activeFilters.state
+                if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false; 
                 if (activeFilters.ochaList && !contact[activeFilters.ochaList]) return false;
                 if (activeFilters.acronyms.length > 0) {
                     const contactAcronym = (contact.acronimo && contact.acronimo.trim() !== '') ? contact.acronimo.trim() : "SIN_ACRONIMO";
@@ -1395,7 +1516,6 @@
             contactsForOrgTypeOptions.forEach(c => { orgTypes.forEach(ot => { if(c[`org_tipo_${ot}`]) availableOrgTypes.set(ot, (availableOrgTypes.get(ot) || 0) + 1); }); });
             updateSelectWithOptions('orgTypeFilter', availableOrgTypes, activeFilters.orgType, orgTypes, ot => ot, formatOrgType, 'tipos');
 
-            // D. For OCHAList select
             let contactsForOchaListOptions = contacts.filter(contact => {
                 if (activeFilters.state && !contact[`est_${activeFilters.state}`]) return false; 
                 if (activeFilters.orgType && !contact[`org_tipo_${activeFilters.orgType}`]) return false; 
@@ -1413,7 +1533,6 @@
             });
             updateSelectWithOptions('ochaListFilter', availableOchaLists, activeFilters.ochaList, allOchaListKeysAndNames, item => item.value, item => formatListName(item.name), 'listas');
 
-            // --- Actual filtering for table ---
             filteredContacts = contacts.filter(contact => { 
                 if (activeFilters.search) { 
                     const s = activeFilters.search; 
